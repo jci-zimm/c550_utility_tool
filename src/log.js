@@ -71,6 +71,14 @@ function log_to_file(message, verbose)
   }
 }
 
+function print(message)
+{
+  var msg = '[I]'.green + `[${(new Date()).toISOString()}] `.gray + message;
+  process.stdout.write(msg);
+  log_to_file(msg, false);
+}
+log.print = print;
+
 function info(message)
 {
   var msg = '[I]'.green + `[${(new Date()).toISOString()}] `.gray + message;

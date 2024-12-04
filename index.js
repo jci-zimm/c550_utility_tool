@@ -110,7 +110,10 @@ if(opt_args.mode == 'config')
   {
     throw('Valid addresses are 0x40-0x45 and 0x55');
   }
-
   a2l.start_server(scan_only);
+}else if(opt_args.mode == 'update')
+{
+  c550_lib.test_update_path();
+  c550_lib.test_update(opt_args.port);
 }
 

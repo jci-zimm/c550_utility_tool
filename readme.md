@@ -16,10 +16,10 @@ To support the various modes of operation, the tool supports the following comma
 
 | Argument | Values | Description | 
 | ---- | ---- | ---- | 
-| **-mode** | "a2l" or "config" | Optional arg to change the tool mode. C550 "config" mode is default. 
-| **-file** | ./path-to-config.txt | Optional arg to specify a C550 config file path other than default.
+| **-mode** | "config"(default), "a2l", "update" | Optional arg to change the tool mode. C550 "config" mode is default. 
+| **-file** | ./path-to-config.txt | Optional arg to specify a C550 config file path other than default or an update file.
 | **-adr** | 0x40 to 0x45 | Optional arg in "a2l" mode to set any sensor's address | 
-| **-port** | COMX | Required arg in "a2l" mode to specify the RS485<-->USB COM port such as "COM5" |
+| **-port** | COMX | Required arg in "a2l","update" mode to specify the USB COM port such as "COM5" |
 | **-run_once** | 0(default) or 1 | When 1, in "a2l" or "config" mode, the program exits upon first success. When 0, the program will operate continuously.
 
 ## C550 Configuration Mode
@@ -59,13 +59,29 @@ The hardware required for this mode is a USB to RS485 adapter, a C550 power modu
 
 ## Leak Sensor, Scan Mode
 
-The c550_utility_tool.exe can scan for leak detect sensors and provide information on them. By not providing the **-adr** argument, the tool will scan all available addresses for sensors and provide information on the sensor. The following is an example: 
+In this mode, the tool will scan for leak detect sensors and provide information on them. By not providing the **-adr** argument, the tool will scan all available addresses for sensors and provide information on the sensor. The following is an example: 
 
 ```
 [P][2024-11-14T18:57:01.165Z] Found A2L Sensor 090000000609 at 0x40
 [I][2024-11-14T18:57:01.195Z] LFL%: 0, Gas Type: R455A, Status: Normal
 [I][2024-11-14T18:57:01.196Z] Leak: 0, Age: 16DAY, Fault: 0
 [I][2024-11-14T18:57:01.196Z] Temp: 27.06C, RH: 51.9%, MIT Thresh: 20%
+```
+
+## Update Mode
+
+In this mode, the tool can update C550 firmware over the USB port. 
+
+The usage is as follows: 
+
+```
+c550_utility_tool.exe -mode update -port [COM PORT] -file [Update File]
+```
+
+Example usage is as follows:
+
+```
+c550_utility_tool.exe -mode update -port COM5 -file main.release.bin
 ```
 
 ## Appendix Windows USB COM Port Number Re-use
@@ -78,9 +94,6 @@ Windows by default creates a new serial port number per device eventually causin
 
 <img src="assets\regedit.png">
 
-# Operation
-
-This section covers implementation/function of the tool
 
 ## Build Instructions
 

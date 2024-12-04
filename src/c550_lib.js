@@ -164,6 +164,64 @@ async function run_serial_command(comm_port, command, timeout_value, write_attem
  * @param {*} data - Serial data from 
  * @returns an object with a status code that shows success if SSID is found
  */
+function parse_ota_len_cb(data)
+{
+  var ret = {code : stat.STATUS_PENDING};
+  //log.debug("Got data: ");
+  //log.debug(data);
+  var lines = data.split('\r');
+  lines.pop(); // remove last line since its either not complete or blank
+  for(var line of lines)
+  {
+    if(line.includes(">update,len,ACK"))
+    {
+      ret.code = stat.STATUS_OK;
+      break;
+    }
+    if(line.includes(">update,FAIL"))
+    {
+      ret.code = stat.ERROR_DEFAULT;
+      break;
+    }
+  }
+  return ret;
+}
+
+
+/**
+ * @brief Function parses C550 wifi-status command and extracts the C550 AP's SSID
+ * @param {*} data - Serial data from 
+ * @returns an object with a status code that shows success if SSID is found
+ */
+function parse_ota_data_cb(data)
+{
+  var ret = {code : stat.STATUS_PENDING};
+  //log.debug("Got data: ");
+  //log.debug(data);
+  var lines = data.split('\r');
+  lines.pop(); // remove last line since its either not complete or blank
+  for(var line of lines)
+  {
+    if(line.includes(">update,data,"))
+    {
+      ret.code = stat.STATUS_OK;
+      break;
+    }
+    if(line.includes(">update,FAIL"))
+    {
+      ret.code = stat.ERROR_DEFAULT;
+      break;
+    }
+  }
+  return ret;
+}
+
+
+/**
+ * @brief Function parses C550 wifi-status command and extracts the C550 AP's SSID
+ * @param {*} data - Serial data from 
+ * @returns an object with a status code that shows success if SSID is found
+ */
 function parse_mac_cb(data)
 {
   var ret = {code : stat.STATUS_PENDING};
@@ -207,7 +265,9 @@ function parse_config_cb(data)
   return ret;
 }
 
-
+/**
+ * @brief This function verifies that the config file exists
+ */
 function test_config_path()
 {
   try{
@@ -228,7 +288,89 @@ function test_config_path()
 }
 c550_lib.test_config_path = test_config_path;
 
+/**
+ * This function verifies that the update file exists
+ */
+function test_update_path()
+{
+  try{
+    log.info(`Loading update file from ./${c550_lib.config_path}`)
+    var update_data = fs.readFileSync(c550_lib.config_path).toString();
+  }catch(e)
+  {
+    log.error(`Update file load issue: ${e.message}`);
+  }
+}
+c550_lib.test_update_path = test_update_path;
 
+/**
+ * @brief This function will attempt to perform an update on the USB device specified
+ * @param {*} comm_port - A string denoting the comm port such as "COM5"
+ * @returns 
+ */
+async function test_update(comm_port)
+{
+  try{
+    var update = fs.readFileSync(c550_lib.config_path);
+    await u.sleep(5000); // boot time
+    var c550 = {};
+    var data = await run_serial_command(comm_port, "\r\n\r\nwifi-status\r\n", 5000, 1, parse_mac_cb);
+    if(data.code == stat.STATUS_OK)
+    {
+      log.debug(`SSID : ${data.data.ssid}`);
+      c550.ssid = data.data.ssid;
+    }
+    else
+    {
+      log.error(`Could not communicate with: ${comm_port}`);
+      return;
+    }
+    data = await run_serial_command(comm_port, `\r\nupdate --len ${update.length}\r\n`, 5000, 1, parse_ota_len_cb);
+    var tick = Date.now();
+    if(data.code == stat.STATUS_OK)
+    {
+      var len_sent = 0;
+      var batch_size = 2*1024;
+      while(len_sent < update.length)
+      {
+        var buf = update.slice(len_sent, len_sent + batch_size);
+        var block = await run_serial_command(comm_port, `\r\nupdate --data ${buf.toString('base64')}\r\n`, 5000, 1, parse_ota_data_cb);
+        if(block.code == stat.STATUS_OK)
+        {
+          len_sent +=buf.length;
+          process.stdout.clearLine();
+          process.stdout.cursorTo(0);
+          log.print(`DEV ${c550.ssid} update: ${len_sent/1024}KB of ${update.length/1024}KB, ${(100*len_sent/update.length).toFixed(2)}%, time: ${((Date.now() - tick)/1000).toFixed(2)}s`);
+        }
+        else
+        {
+          log.error(`Update file issue: ${len_sent}`);
+          return;
+        }
+        await u.sleep(1);
+      }
+      process.stdout.write('\r\n');
+      log.pass(`SUCCESS. Loaded update`);
+      process.exit(0);
+    }
+    else
+    {
+      log.error(`Update device issue, command not supported?: ${len_sent}`);
+      return;
+    }
+
+  }catch(e)
+  {
+    log.error(`Error with load attempt: ${comm_port}, ${e.message}`);
+  }
+}
+c550_lib.test_update = test_update;
+
+/**
+ * @brief This function will attempt to async load into a config onto the device specified by the comm port
+ * @param {} comm_port - A string denoting the comm port such as "COM5"
+ * @returns 
+ */
 async function test_command(comm_port)
 {
   try{
