@@ -376,7 +376,7 @@ async function test_command(comm_port)
   try{
     var config_text = fs.readFileSync(c550_lib.config_path).toString();
     log.info(`Loading config into: ${comm_port}`);
-    await u.sleep(5000); // boot time
+    await u.sleep(8000); // boot time
     var c550 = {};
     var data = await run_serial_command(comm_port, "\r\n\r\nwifi-status\r\n", 5000, 3, parse_mac_cb);
     if(data.code == stat.STATUS_OK)
@@ -393,6 +393,7 @@ async function test_command(comm_port)
     data = await run_serial_command(comm_port, `\r\n\r\nconfig ${config_text}\r\n`, 5000, 3, parse_config_cb);
     if(data.code == stat.STATUS_OK)
     {
+      await u.sleep(3000); // save time
       log.pass(`SUCCESS. Loaded config into: ${comm_port}, ${c550.ssid}`);
       if(c550_lib.exit_on_pass)
       {
